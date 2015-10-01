@@ -1,4 +1,4 @@
-; StudiOS
+; RetrOS
 ; ============================================================================
 ; v0.0.2
 ; ----------------------------------------------------------------------------
@@ -21,12 +21,12 @@ loop:
 	add bx, 1           	; Point to the next character in the string
 	jmp loop            	; Loop back for the next character
 exit:
-	jmp $			; Loop forever
+	jmp $			            ; Loop forever
 
 version:
-	db 'StudiOS, v0.0.2', 0
+	db 'RetrOS, v0.0.3', 0
 	
-	times 510-($-$$) db 0 	; Pad to 510 bytes with zero bytes
+	times 510-($-$$) db 0 ; Pad to 510 bytes with zero bytes
 
-	dw 0xaa55 		; Last two bytes (one word) form the magic number ,
-				; so BIOS knows we are a boot sector.
+	dw 0xaa55 		        ; Last two bytes (one word) form the magic number ,
+				                ; so BIOS knows we are a boot sector.

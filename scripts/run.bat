@@ -1,2 +1,2 @@
 @call vars.bat
-@qemu ../build/studios.img
+@qemu ../build/retros.img

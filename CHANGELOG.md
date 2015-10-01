@@ -2,10 +2,13 @@
 
 All notable changes to this project will be documented in this file.
 
+## [0.0.3] - 2015-10-01
+- Change name to RetrOS
+
 ## [0.0.2] - 2015-09-24
 
 ### Changed
-- Added clear screen and print of version number
+- Add clear screen and print of version number
 
 ## [0.0.1] - 2015-09-24
 
