@@ -1,4 +1,4 @@
-# RetrOS - because 640k should be enough for anyone
+# RetrOS - because 640k should be enough for anybody
 
 ## Overview
 
@@ -21,8 +21,8 @@ and work on your own version.
 The code itself has no dependencies, but there are specific tools that you
 will need to compile and run the system.
 
-* qemu, for running RetrOS as a Virtual Machine
-* nasm, for compiling the assembly-language files
+* [qemu](http://wiki.qemu.org/Main_Page), for running RetrOS as a Virtual Machine
+* [nasm](http://www.nasm.us), for compiling the assembly-language files
 
 Both of these should be painless to acquire and install.
 

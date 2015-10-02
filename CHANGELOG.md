@@ -2,6 +2,9 @@
 
 All notable changes to this project will be documented in this file.
 
+## [0.0.4] - 2015-10-02
+- Add simple print_string function
+
 ## [0.0.3] - 2015-10-01
 - Change name to RetrOS
 
