@@ -2,6 +2,9 @@
 
 All notable changes to this project will be documented in this file.
 
+## [0.0.5] - 2015-10-04
+- Add print_hex routine, and use local labels
+
 ## [0.0.4] - 2015-10-02
 - Add simple print_string function
 
