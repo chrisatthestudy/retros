@@ -2,6 +2,14 @@
 
 All notable changes to this project will be documented in this file.
 
+## [0.0.7] - 2015-10-05
+- Add disk_read routine
+- Modify Qemu call to specify image as fda (floppy disk) rather than hda, as
+  the disk_read fails in the latter case (this needs investigation)
+
+## [0.0.6] - 2015-10-04
+- Use LODSB for string-printing, and use appropriate registers
+
 ## [0.0.5] - 2015-10-04
 - Add print_hex routine, and use local labels
 
