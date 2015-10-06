@@ -2,6 +2,10 @@
 
 All notable changes to this project will be documented in this file.
 
+## [0.0.8] - 2015-10-06
+- Add print_hex_byte routine, modify print_hex to use it
+- Add hex_dump routine
+
 ## [0.0.7] - 2015-10-05
 - Add disk_read routine
 - Modify Qemu call to specify image as fda (floppy disk) rather than hda, as

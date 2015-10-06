@@ -1,7 +1,7 @@
 ;; ============================================================================
 ;; RetrOS
 ;; ============================================================================
-;; v0.0.7
+;; v0.0.8
 ;; ----------------------------------------------------------------------------
 ;; A simple boot sector program
 
@@ -21,19 +21,33 @@ clear_screen:
 print_version_number:	
 	mov si, version		; Fetch the address of the start of the version string
 	call print_string	; Print the version string
+	call print_crlf
+	mov si, BOOT_DRIVE_LABEL
+	call print_string
 	mov dx, [BOOT_DRIVE]	; Print the drive
 	call print_hex		;
+	call print_crlf
+	call print_crlf
 
 	mov bx, 0x9000		; Load 5 sectors to 0x0000(ES):0x9000(BX)
 	mov dh, 5		; from the boot disk.
 	mov dl, [BOOT_DRIVE]
 	call disk_read
-	mov dx, [0x9000] 	; Print out the first loaded word, which
-	call print_hex 		; we expect to be 0xdada , stored
-				; at address 0x9000
-	mov dx, [0x9000 + 512]	; Also, print the first word from the
-	call print_hex		; 2nd loaded sector: should be 0xface
-
+	
+	mov si, HEX_DUMP_LABEL
+	call print_string
+	call print_crlf
+	call print_crlf
+	
+	mov si, 0x9000		; Hex dump from the first loaded sector
+	mov cx, 0x08
+	call hex_dump
+	call print_crlf
+	
+	mov si, 0x9000 + 512	; Hex dump from the second loaded sector
+	mov cx, 0x08
+	call hex_dump
+	call print_crlf
 exit:
 	jmp $			; Loop forever
 
@@ -61,41 +75,95 @@ print_string:
 	;; ===================================================================
 	;; Print Hex
 	;; ===================================================================
-	;; Prints (in hex) the number held in dx
+	;; Prints (in hex) the value held in dx
 	;; -------------------------------------------------------------------
-print_hex:			; Routine to print hex value of dx
-	push ax
+print_hex:
 	push dx
+	mov bl, dh              ; Print the high-byte  
+	call print_hex_byte
+	mov bl, dl		; Print the low-byte
+	call print_hex_byte
+	pop dx
+	ret
+                    
+	;; ===================================================================
+	;; Print Hex Byte
+	;; ===================================================================
+	;; Prints (in hex) the value held in bl
+	;; -------------------------------------------------------------------
+print_hex_byte:                                     
+	push ax    
+	push bx
 	push di
-	mov di, .hex_buffer + 5	; Point bx to the end of the buffer
+	push si
+	mov di, .hex_buffer + 1	; Point di to the end of the buffer
 	std			; Set the direction flag (we are decrementing)
 .next_nybble:
-	mov al, dl		; Copy the low-byte of the number
-	and al, 0x0F           	; Zero the high-nybble
-	cmp al, 0x0A            ; Is the result greater than 10?
-	jnc .use_alpha_chars	; Yes: use 'A' - 'F' for 10 - 15
-	add al, 0x30            ; Convert to ASCII (add 48)
+	mov al, bl		; Copy the low-byte of the number
+	and al, 0x0F		; Zero the high-nybble
+	cmp al, 0x0A		; Is the result greater than 10?
+	jnc .use_alpha_chars	; Yes, use 'A' - 'F' for 10 - 15
+	add al, 0x30		; Convert to ASCII (add 48)
 	jmp .put_char		; Put the resulting character into the buffer
-.use_alpha_chars:	
-	add al, 0x37            ; Convert to hex (A-F) ASCII values (add 55)
+.use_alpha_chars:
+	add al, 0x37		; Convert to hex (A-F) ASCII values (add 55)
 .put_char:
 	stosb			; Copy al to [di] and decrement di
-	shr dx, 0x04		; Next nybble of the number we're printing
-	cmp di, .hex_buffer + 1 ; Start of buffer?
+	shr bl, 0x04		; Next nybble fo the number we're printing
+	cmp di, .hex_buffer - 1	; Start of buffer?
 	jnz .next_nybble	; No -- get the next nybble
 	mov si, .hex_buffer	; Done. Print the result
-	call print_string	;
+	call print_string
+	pop si
 	pop di
-	pop dx
+	pop bx
 	pop ax
 	ret
-.hex_buffer:			; Buffer to hold hex characters for print_hex
-	db '0x'
-	db '00'
-	db '00'
-	db 0
+.hex_buffer:
+	db '00', 0
+
+	;; ===================================================================
+	;; Hex Dump
+	;; -------------------------------------------------------------------
+	;; Prints out the hex values of the bytes from address si for a total 
+	;; of cx bytes.
+	;; -------------------------------------------------------------------
+hex_dump:
+	push ax
+	push bx
+	push cx
+	push si
+.next_byte:
+	lodsb
+	mov bl, al
+	call print_hex_byte
+	call print_space
+	loop .next_byte, cx
+	pop si
+	pop cx
+	pop bx
+	pop ax
+	ret
 	
-	;; load DH sectors to ES:BX from drive DL
+print_crlf:
+	push si
+	mov si, CRLF
+	call print_string
+	pop si
+	ret
+	
+print_space:
+	push si
+	mov si, SPACE
+	call print_string
+	pop si
+	ret
+	
+	;; ===================================================================
+	;; Disk Read
+	;; -------------------------------------------------------------------
+	;; Loads DH sectors to ES:BX from drive DL
+	;; -------------------------------------------------------------------
 disk_read:
 	push dx 		; Store DX on stack so later we can recall
 				; how many sectors were request to be read,
@@ -114,18 +182,24 @@ jne disk_error			; display error message
 	ret
 	
 disk_error :
-	mov si, DISK_ERROR_MSG
+	mov si, DISK_ERROR_MSG      
 	call print_string
 	jmp $
 	
 ; Variables
 
 BOOT_DRIVE: db 0, 0
+BOOT_DRIVE_LABEL: db "Drive ", 0
+
+HEX_DUMP_LABEL: db "Hex Dump", 0
+
+CRLF: db 0x0D, 0x0A, 0
+SPACE: db 0x20, 0
 
 DISK_ERROR_MSG db "Disk read error!", 0
 
 version:
-	db 'RetrOS, v0.0.7', 0x0D, 0x0A, 'Because 640k should be enough for anybody', 0x0D, 0x0A, 0
+	db 'RetrOS, v0.0.8', 0x0D, 0x0A, 'Because 640k should be enough for anybody', 0x0D, 0x0A, 0
 	
 	times 510-($-$$) db 0	; Pad to 510 bytes with zero bytes
 
