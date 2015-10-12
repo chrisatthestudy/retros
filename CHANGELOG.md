@@ -2,6 +2,11 @@
 
 All notable changes to this project will be documented in this file.
 
+## [0.1.0 - 2015-10-12
+- Add and load kernel.asm
+- Update build and run scripts
+- Trim unused code from boot.asm
+
 ## [0.0.8] - 2015-10-06
 - Add print_hex_byte routine, modify print_hex to use it
 - Add hex_dump routine
