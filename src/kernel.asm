@@ -1,7 +1,7 @@
 ;; ============================================================================
 ;; RetrOS
 ;; ============================================================================
-;; v0.1.0
+;; v0.1.1
 ;; ----------------------------------------------------------------------------
 ;; Retros kernel
 
@@ -11,7 +11,7 @@
 	pop ds			; Align the data segment with the code segment
 
 	mov bp, 0x7DFF		; We'll overwrite the boot sector with the
-	mov sp, bp		; stack, giving us over 30k for the stack,
+	mov sp, bp		; stack, giving us about 30k for the stack,
 				; from 00500 - 07DFF
 
 	mov [BOOT_DRIVE], dl	; Store the boot-drive number
@@ -20,9 +20,10 @@ print_version_number:
 	mov si, version		; Fetch the address of the start of the version string
 	call print_string	; Print the version string
 	call print_crlf
-
+get_input:
+	call get_char
 exit:
-	jmp $			; Loop forever
+	jmp get_input		; Loop forever
 
 	;; ===================================================================
 	;; Print String
@@ -156,6 +157,26 @@ disk_error :
 	mov si, DISK_ERROR_MSG      
 	call print_string
 	jmp $
+
+	;; ===================================================================
+	;; Get Char
+	;; -------------------------------------------------------------------
+	;; Reads a single character from the keyboard into AL and echoes it
+	;; to the screen.
+	;; -------------------------------------------------------------------
+get_char:
+	push ah			; Only preserve the high-byte -- the low-byte returns the character
+	xor ah, ah		; AH = 0: input a single character
+	int 0x16		; Interrupt, inputs single character into AL
+	mov ah, 0x0E		; Echo the returned character
+	int 0x10
+.exit:
+	pop cx
+	pop bx
+	pop ah
+	ret
+	
+	
 	
 ; Variables
 
@@ -166,7 +187,7 @@ HEX_DUMP_LABEL: db "Hex Dump", 0
 
 CRLF: db 0x0D, 0x0A, 0
 SPACE: db 0x20, 0
-
+	
 DISK_ERROR_MSG db "Disk read error!", 0
 
 version:

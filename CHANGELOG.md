@@ -2,6 +2,9 @@
 
 All notable changes to this project will be documented in this file.
 
+## [0.1.1 - 2015-10-16
+- Add simple get_char to read and echo input
+
 ## [0.1.0 - 2015-10-12
 - Add and load kernel.asm
 - Update build and run scripts
