@@ -2,7 +2,12 @@
 
 All notable changes to this project will be documented in this file.
 
-## [0.1.1 - 2015-10-16
+## [0.1.2] - 2015-10-21
+- Add cursor-position functions
+- Modify print routines to support colours
+- Add basic input and screen-scrolling
+
+## [0.1.1] - 2015-10-16
 - Add simple get_char to read and echo input
 
 ## [0.1.0 - 2015-10-12
