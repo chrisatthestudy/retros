@@ -1,7 +1,7 @@
 ;; ============================================================================
 ;; RetrOS
 ;; ============================================================================
-;; v0.1.2
+;; v0.1.3
 ;; ----------------------------------------------------------------------------
 ;; Retros kernel
 
@@ -16,10 +16,29 @@
 
 	mov [BOOT_DRIVE], dl	; Store the boot-drive number
 	
+clear_screen:
+	mov ah, 0x00		; Set video mode
+	mov al, 0x03		; Alternatives: 0x03 (text), 0x12 or 0x13 (graphics)
+	int 0x10
+
+	mov ah, 0x0B		; Set background colour
+	xor bh, bh
+	mov bl, CL_BLUE		; Select colour
+	int 0x10
+	
 print_version_number:
 	mov si, version		; Fetch the address of the start of the version string
 	call print_string	; Print the version string
 	call print_crlf
+
+	;; Test for pixel-plotting. Only works if a graphics mode was selected
+	;; in clear_screen (above).
+	
+	mov dx, 0x0020		; Pixel row
+	mov cx, 0x0020		; Pixel column
+	mov al, CL_RED		; Pixel colour
+	call plot		; Plot the pixel
+	
 	mov dx, 0x0300		; Row 3, col 0
 	call cursor_at
 get_input:
@@ -35,6 +54,8 @@ exit:
 print_char:
 	push ax
 	push bx
+	push cx
+	mov cx, 0x0001	 	; Only write the character once
 	;; First check for special characters and handle them
 	cmp al, 0x0D		; Carriage return
 	je .do_carriage_return
@@ -62,13 +83,14 @@ print_char:
 	int 0x10
 	jmp .exit
 .do_non_printable:
-	mov al, "."
+	mov al, "."		; For non-printable characters, print a .
 .do_print:	
-	mov bx, 0x0007		; Grey text
+	mov bx, CL_SILVER	; Grey text
 	mov ah, 0x09		; Print Character command
 	int 0x10		; Interrupt 10 -- video commands
 	call cursor_right
 .exit:
+	pop cx
 	pop bx
 	pop ax
 	ret
@@ -85,10 +107,10 @@ print_string:
 	cld			; Clear the direction flag (print forwards)
 	lodsb			; Get the character from the string
 	or al, al		; Is it zero (end of string indicator)?
-	jz .print_string_done	; If yes, we're done
+	jz .exit		; If yes, we're done
 	call print_char
 	jmp .next_char		; Loop back for the next character
-.print_string_done:
+.exit:
 	pop si
 	pop ax
 	ret
@@ -296,6 +318,13 @@ cursor_line_feed:
 	call cursor_at
 	ret
 
+plot:
+	push ax
+	mov ah, 0x0C		; Write pixel command
+	int 0x10		; Call the interrupt
+	pop ax
+	ret
+
 ; Variables
 
 BOOT_DRIVE: db 0, 0
@@ -312,7 +341,24 @@ CURSOR:
 CURSOR_COL:	db 0
 CURSOR_ROW:	db 0
 
+CL_BLACK	equ	0x00
+CL_NAVY		equ 	0x01
+CL_OLIVE  	equ 	0x02
+CL_CYAN  	equ 	0x03
+CL_MAROON  	equ 	0x04
+CL_MAGENTA	equ 	0x05
+CL_BROWN  	equ 	0x06
+CL_SILVER  	equ 	0x07
+CL_GREY  	equ 	0x08
+CL_BLUE  	equ 	0x09
+CL_GREEN  	equ 	0x0A
+CL_AQUA  	equ 	0x0B
+CL_RED  	equ 	0x0C
+CL_PURPLE  	equ 	0x0D
+CL_YELLOW  	equ 	0x0E
+CL_WHITE  	equ 	0x0F
+	
 version:
-	db 'RetrOS, v0.1.2', 0x0D, 0x0A, 'Because 640k should be enough for anybody', 0x0D, 0x0A, 0
+	db 'RetrOS, v0.1.3', 0x0D, 0x0A, 'Because 640k should be enough for anybody', 0x0D, 0x0A, 0
 	
 	times 512-($-$$) db 0	; Pad to 512 bytes with zero bytes
