@@ -1,7 +1,7 @@
 ;; ============================================================================
 ;; RetrOS
 ;; ============================================================================
-;; v0.1.2
+;; v0.1.4
 ;; ----------------------------------------------------------------------------
 ;; A simple boot sector
 
@@ -21,7 +21,7 @@ load_kernel:
 	push 0x9000
 	pop es
 	xor bx, bx
-	mov dh, 1		; Read 1 sector
+	mov dh, 2		; Read 2 sectors
 	mov dl, 1		; from floppy disk B
 	mov cl, 0x01 		; Start reading from first sector
 	call disk_read

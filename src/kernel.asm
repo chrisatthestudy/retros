@@ -1,7 +1,7 @@
 ;; ============================================================================
 ;; RetrOS
 ;; ============================================================================
-;; v0.1.3
+;; v0.1.4
 ;; ----------------------------------------------------------------------------
 ;; Retros kernel
 
@@ -15,8 +15,85 @@
 				; from 00500 - 07DFF
 
 	mov [BOOT_DRIVE], dl	; Store the boot-drive number
+
+	;; ===================================================================
+	;; Initialise OS Call Interrupt
+	;; ===================================================================
+	;; Create an interrupt (0xF0) to handle system call. System calls will
+	;; be done by calling this interrupt with bx holding the number of
+	;; the required command (see OS Call Handler below).
+	;; -------------------------------------------------------------------
+os_init_interrupt:
+	push word 0		; BIOS interrupt table is in segment 0x0000
+	pop es
+	mov [es:4 * 0xF0], word os_call ; Store the offset address of the handler
+	mov [es:4 * 0xF0 + 2], cs 	; The handler is in the current code segment
+
+	;; Initialisation complete -- jump to the actual starting-point
+	jmp start_os
+
+	;; ===================================================================
+	;; OS Call Handler & OS Call Table
+	;; ===================================================================
+	;; Calls made via the OS Call interrupt will go via this handler,
+	;; which uses the table of routine addresses (os_call_table) to route
+	;; the call to the required function.
+	;;
+	;; Put the OS Call Number into bx, then call INT 0xF0
+	;; -------------------------------------------------------------------
+os_call:
+	cmp bx, os_call_max	; Check that the call number is within range
+	jg os_invalid_call	; Report an error if it isn't
+	shl bx, 1		; Each entry in the call table is two bytes,
+				; so multiply the call number by two to get
+				; the correct offset
+	jmp near [cs:os_call_table + bx] ; Jump to the location of actual routine
+
+	os_call_max equ 1	; Highest OS Call number. Update this
+				; whenever a new entry is added to the
+				; call table
 	
+os_call_table:
+				; OS Call : Action
+				; --------:-----------------------------------
+	dw os_no_op		; 0x00	  : Null call, does nothing
+	dw os_clear_screen	; 0x01	  : Clear Screen
+
+	;; ===================================================================
+	;; OS Call Redirection functions
+	;; ===================================================================
+	;; These are the functions listed in the OS Call Table above, and in
+	;; the main they simply call the matching internal functions. This
+	;; allows the internal functions to be called from within the kernel
+	;; without having the extra setup and overhead of calling them via the
+	;; interrupt.
+	;; -------------------------------------------------------------------
+os_no_op:
+	iret
+
+os_clear_screen:
+	call clear_screen
+	iret
+	
+os_invalid_call:
+	mov si, MSG_INVALID_OS_CALL
+	call print_string
+	push dx
+	mov dx, bx
+	call print_hex
+	call print_crlf
+	pop dx
+	iret
+
+	;; ===================================================================
+	;; Clear Screen
+	;; ===================================================================
+	;; This actually sets the video mode, which has the inevitable
+	;; side-effect of resetting the screen display.
+	;; -------------------------------------------------------------------
 clear_screen:
+	push ax
+	push bx
 	mov ah, 0x00		; Set video mode
 	mov al, 0x03		; Alternatives: 0x03 (text), 0x12 or 0x13 (graphics)
 	int 0x10
@@ -25,6 +102,20 @@ clear_screen:
 	xor bh, bh
 	mov bl, CL_BLUE		; Select colour
 	int 0x10
+	pop bx
+	pop ax
+	ret
+
+	;; ===================================================================
+	;; Main Entry Point
+	;; ===================================================================
+	;; Everything should be set up before jumping to this point -- see the
+	;; top of this file.
+	;; -------------------------------------------------------------------
+start_os:
+	mov bx, 0x01		; Test of the OS Call system
+	int 0xF0
+	;; call clear_screen
 	
 print_version_number:
 	mov si, version		; Fetch the address of the start of the version string
@@ -263,15 +354,18 @@ cursor_at:
 	;; Sub-routines to move the cursor
 	;; -------------------------------------------------------------------
 cursor_left:
+	push dx
 	mov dx, [CURSOR]
 	cmp dl, 0
 	jz .exit
 	dec dl
 	call cursor_at
-.exit:	
+.exit:
+	pop dx
 	ret
 	
 cursor_right:
+	push dx
 	mov dx, [CURSOR]
 	inc dl
 	cmp dl, 79		; Right-hand edge of screen?
@@ -280,18 +374,22 @@ cursor_right:
 	call cursor_line_feed
 .exit:
 	call cursor_at
+	pop dx
 	ret
 
 cursor_up:
+	push dx
 	mov dx, [CURSOR]
 	dec dh
 	cmp dl, 0		; Do nothing if we hit the top of the screen
 	jz .exit
 	call cursor_at
 .exit:
+	pop dx
 	ret
 
 cursor_down:
+	push dx
 	mov dx, [CURSOR]
 	inc dh
 	cmp dh, 25		; Bottom of the screen?
@@ -310,12 +408,15 @@ cursor_down:
 	mov dh, 24		; Reset to the bottom row of the screen.
 .continue:
 	call cursor_at
+	pop dx
 	ret
 
 cursor_line_feed:
+	push dx
 	mov dx, [CURSOR]
 	xor dl, dl
 	call cursor_at
+	pop dx
 	ret
 
 plot:
@@ -357,8 +458,10 @@ CL_RED  	equ 	0x0C
 CL_PURPLE  	equ 	0x0D
 CL_YELLOW  	equ 	0x0E
 CL_WHITE  	equ 	0x0F
-	
+
+MSG_INVALID_OS_CALL:	db "Invalid OS call: ", 0
+
 version:
 	db 'RetrOS, v0.1.3', 0x0D, 0x0A, 'Because 640k should be enough for anybody', 0x0D, 0x0A, 0
 	
-	times 512-($-$$) db 0	; Pad to 512 bytes with zero bytes
+	times 1024-($-$$) db 0	; Pad to 1024 bytes with zero bytes

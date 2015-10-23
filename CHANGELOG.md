@@ -2,6 +2,9 @@
 
 All notable changes to this project will be documented in this file.
 
+## [0.1.4] - 2015-10-23
+- Add basic OS call handling, using a software interrupt
+
 ## [0.1.3] - 2015-10-22
 - Add pixel-plot functions
 - Use video mode instead of text mode (for testing only)
