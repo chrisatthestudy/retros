@@ -54,7 +54,7 @@ information on -- just scanning through the pages of available commands
 is likely to just be confusing and offputting.
 
 * [x86 OS Development](http://inglorion.net/documents/tutorials/x86ostut/)
-A nice, but regrettable incomplete tutorial.
+A nice, but regrettably incomplete tutorial.
 
 * [MikeOS - simple x86 assembly language operating system](http://mikeos.sourceforge.net)
 It seems that at least one other person (or possibly team) has done what I am
