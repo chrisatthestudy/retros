@@ -41,3 +41,22 @@ eliminate this call if those programs are already in your path.
 
 For *nix, the build.sh assumes that nasm and qemu are in the system path.
 
+## Resources
+
+Resources for writing a 16-bit OS are rather sparse, because most people
+prefer to move quickly on to protected-mode. However, I found a few useful
+web-sites, which I'm listing here.
+
+* [Ralf Brown's Interrupt List](http://www.ctyme.com/rbrown.htm)
+A dauntingly extensive list of the known interrupts. It's an invaluable
+resource, but it helps to know in advance which interrupts you want
+information on -- just scanning through the pages of available commands
+is likely to just be confusing and offputting.
+
+* [x86 OS Development](http://inglorion.net/documents/tutorials/x86ostut/)
+A nice, but regrettable incomplete tutorial.
+
+* [MikeOS - simple x86 assembly language operating system](http://mikeos.sourceforge.net)
+It seems that at least one other person (or possibly team) has done what I am
+trying to do! This is an excellent starting-point, and full of information
+about How To Do It, and is a lot more advanced than RetrOS.
