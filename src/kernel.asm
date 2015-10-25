@@ -1,7 +1,7 @@
 ;; ============================================================================
 ;; RetrOS
 ;; ============================================================================
-;; v0.1.4
+;; v0.1.5
 ;; ----------------------------------------------------------------------------
 ;; Retros kernel
 
@@ -10,9 +10,11 @@
 	push cs
 	pop ds			; Align the data segment with the code segment
 
-	mov bp, 0x7DFF		; We'll overwrite the boot sector with the
-	mov sp, bp		; stack, giving us about 30k for the stack,
-				; from 00500 - 07DFF
+	push 0x0050		; Put the stack near the bottom of the memory
+	pop ss
+	
+	mov bp, 0xFFFF		; Give us 65kb of stack space
+	mov sp, bp
 
 	mov [BOOT_DRIVE], dl	; Store the boot-drive number
 
@@ -132,6 +134,39 @@ print_version_number:
 	
 	mov dx, 0x0300		; Row 3, col 0
 	call cursor_at
+	
+stack_dump:
+				; Hex dump of the stack
+				; -------------------------------------------- 
+	push 0x0100		; Put something on the stack, as a test
+	push 0xFFFF
+	push 0x01FC
+	
+	mov dx, bp		; Print stack base address
+	call print_hex
+	call print_space
+
+	mov dx, sp		; Print stack top address
+	call print_hex
+	call print_space
+
+				; Stack is at ss:sp -- copy this to es:si for
+				; the hex dump routine
+	
+	push ss			; Point es at stack segment
+	pop es
+	
+	push sp			; Point si at stack pointer offset
+	pop si
+	
+	mov cx, bp		; Subtract stack pointer from stack base
+	sub cx, sp		; to find out how many items are on the
+				; stack (the stack grows downwards, so bp
+				; is actually higher than sp).
+	
+	call hex_dump
+	call print_crlf
+	
 get_input:
 	call get_char
 exit:
@@ -229,7 +264,10 @@ print_hex_byte:
 	push ax    
 	push bx
 	push di
+	push es
 	push si
+	push ds
+	pop es
 	mov di, .hex_buffer + 1	; Point di to the end of the buffer
 	std			; Set the direction flag (we are decrementing)
 .next_nybble:
@@ -242,24 +280,25 @@ print_hex_byte:
 .use_alpha_chars:
 	add al, 0x37		; Convert to hex (A-F) ASCII values (add 55)
 .put_char:
-	stosb			; Copy al to [di] and decrement di
+	stosb			; Copy al to [es:di] and decrement di
 	shr bl, 0x04		; Next nybble fo the number we're printing
 	cmp di, .hex_buffer - 1	; Start of buffer?
 	jnz .next_nybble	; No -- get the next nybble
 	mov si, .hex_buffer	; Done. Print the result
 	call print_string
 	pop si
+	pop es
 	pop di
 	pop bx
 	pop ax
 	ret
 .hex_buffer:
-	db '00', 0
+	db 'FF', 0
 
 	;; ===================================================================
 	;; Hex Dump
 	;; -------------------------------------------------------------------
-	;; Prints out the hex values of the bytes from address si for a total 
+	;; Prints out the hex values of the bytes from address es:si for a total 
 	;; of cx bytes.
 	;; -------------------------------------------------------------------
 hex_dump:
@@ -268,7 +307,7 @@ hex_dump:
 	push cx
 	push si
 .next_byte:
-	lodsb
+	es lodsb
 	mov bl, al
 	call print_hex_byte
 	call print_space
@@ -462,6 +501,6 @@ CL_WHITE  	equ 	0x0F
 MSG_INVALID_OS_CALL:	db "Invalid OS call: ", 0
 
 version:
-	db 'RetrOS, v0.1.3', 0x0D, 0x0A, 'Because 640k should be enough for anybody', 0x0D, 0x0A, 0
+	db 'RetrOS, v0.1.5', 0x0D, 0x0A, 'Because 640k should be enough for anybody', 0x0D, 0x0A, 0
 	
 	times 1024-($-$$) db 0	; Pad to 1024 bytes with zero bytes

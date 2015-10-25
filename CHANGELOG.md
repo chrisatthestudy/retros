@@ -2,6 +2,10 @@
 
 All notable changes to this project will be documented in this file.
 
+## [0.1.5] - 2015-10-25
+- Reorganise memory layout
+- Add hex dump of stack
+
 ## [0.1.4] - 2015-10-23
 - Add links in the README to other resources
 - Add basic OS call handling, using a software interrupt

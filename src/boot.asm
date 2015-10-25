@@ -1,7 +1,7 @@
 ;; ============================================================================
 ;; RetrOS
 ;; ============================================================================
-;; v0.1.4
+;; v0.1.5
 ;; ----------------------------------------------------------------------------
 ;; A simple boot sector
 
@@ -18,18 +18,16 @@ clear_screen:
 	int 0x10
 	
 load_kernel:	
-	push 0x9000
+	push KERNEL_SEGMENT
 	pop es
-	xor bx, bx
+	mov bx, KERNEL_OFFSET
 	mov dh, 2		; Read 2 sectors
 	mov dl, 1		; from floppy disk B
 	mov cl, 0x01 		; Start reading from first sector
 	call disk_read
-	mov dl, [BOOT_DRIVE]	; Pass the boot-drive number to the kernel,
-				; via the dl register
-	
+
 exit:
-	jmp 0x9000:0x0000	; Jump to the start of the kernel
+	jmp KERNEL_SEGMENT:KERNEL_OFFSET	; Jump to the start of the kernel
 
 	;; ===================================================================
 	;; Print String
@@ -81,6 +79,9 @@ disk_error :
 BOOT_DRIVE db 0
 	
 DISK_ERROR_MSG db "Disk read error!", 0
+
+KERNEL_SEGMENT equ 0x0060	; Load the kernel near the bottom of the
+KERNEL_OFFSET  equ 0x0000	; available memory
 
 padding:	
 	times 510-($-$$) db 0	; Pad to 510 bytes with zero bytes
