@@ -1,7 +1,7 @@
 ;; ============================================================================
 ;; RetrOS
 ;; ============================================================================
-;; v0.1.5
+;; v0.1.6
 ;; ----------------------------------------------------------------------------
 ;; Retros kernel
 
@@ -165,6 +165,56 @@ stack_dump:
 				; is actually higher than sp).
 	
 	call hex_dump
+	call print_crlf
+	call print_crlf
+
+bda_dump:
+				; Hex dump of Bios Data Area
+				; -------------------------------------------- 
+
+				; 1. COM Ports
+	
+	mov dx, 0x0000		; BDA is in segment 0x0000
+	call print_hex
+	mov al, ":"
+	call print_char
+	
+	mov dx, 0x0400		; Addresses of COM ports - 4 word values
+	call print_hex
+	call print_space
+
+	push 0x0000
+	pop es
+
+	push 0x0400
+	pop si
+
+	mov cx, 0x0010
+
+	call hex_dump
+	call print_crlf
+
+				; 2. LPT Ports
+	
+	mov dx, 0x0000		; BDA is in segment 0x0000
+	call print_hex
+	mov al, ":"
+	call print_char
+	
+	mov dx, 0x0408		; Addresses of LPT ports - 3 word values
+	call print_hex
+	call print_space
+
+	push 0x0000
+	pop es
+
+	push 0x0408
+	pop si
+
+	mov cx, 0x000C
+
+	call hex_dump
+	call print_crlf
 	call print_crlf
 	
 get_input:
@@ -501,6 +551,6 @@ CL_WHITE  	equ 	0x0F
 MSG_INVALID_OS_CALL:	db "Invalid OS call: ", 0
 
 version:
-	db 'RetrOS, v0.1.5', 0x0D, 0x0A, 'Because 640k should be enough for anybody', 0x0D, 0x0A, 0
+	db 'RetrOS, v0.1.6', 0x0D, 0x0A, 'Because 640k should be enough for anybody', 0x0D, 0x0A, 0
 	
 	times 1024-($-$$) db 0	; Pad to 1024 bytes with zero bytes
