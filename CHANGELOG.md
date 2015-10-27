@@ -2,6 +2,9 @@
 
 All notable changes to this project will be documented in this file.
 
+## [0.2.0] - 2015-10-27
+- Replace OS interrupt call-handling with JMP table
+
 ## [0.1.6] - 2015-10-26
 - Add dump of part of BIOS data area, for testing
 

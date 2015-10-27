@@ -1,127 +1,77 @@
 ;; ============================================================================
 ;; RetrOS
 ;; ============================================================================
-;; v0.1.6
+;; v0.2.0
 ;; ----------------------------------------------------------------------------
 ;; Retros kernel
 
 	[org 0x0000]
 
+	;; ===================================================================
+	;; OS Call Router
+	;; ===================================================================
+	;; The location of this router table is fixed -- it cannot be moved
+	;; from the start of this file, as the address entries must never
+	;; change.
+	;; 
+	;; Calling a system function:
+	;;
+	;;    call SYS_CLEAR_SCREEN
+	;;
+	;; This calls address 0x0006 (see the os_call_router), which then
+	;; jumps to the actual clear-screen function.
+	;;
+	;; The JMP instruction plus the operand occupies 3 bytes -- when new
+	;; new functions are added, the next available router address can
+	;; easily be calculated by adding 3 to the last entry in the current
+	;; list.
+	;; 
+	;; TODO: These equ declarations need to be moved to an 'include' file
+	;; so that they can be used by other programs.
+	;; -------------------------------------------------------------------
+	SYS       		equ 0x0050    ; Segment for OS call table (not currently used)
+	
+	SYS_RESET  		equ 0x0000    ; Restart OS
+	SYS_VERSION		equ 0x0003    ; Returns with es:si pointing to the version string
+	SYS_CLEAR_SCREEN	equ 0x0006    ; Clear screen (set video mode)
+	SYS_PRINT_CHAR		equ 0x0009    ; Print the character in AL
+	SYS_PRINT_STRING	equ 0x000C    ; Print the zero-terminated string pointed to by SI
+	SYS_PRINT_HEX_BYTE	equ 0x000F    ; Print the hex-byte in AL
+	SYS_PRINT_HEX_WORD	equ 0x0012    ; Print the hex-word in AX
+	SYS_GET_CHAR		equ 0x0015    ; Read from the keyboard into AL
+	
+os_call_router:
+	jmp near os_reset		; 0x0000
+	jmp near os_version		; 0x0003
+	jmp near os_clear_screen	; 0x0006
+	jmp near os_print_char		; 0x0009
+	jmp near os_print_string	; 0x000C
+	jmp near os_print_hex_byte	; 0x000F
+	jmp near os_print_hex_word	; 0x0012
+	jmp near os_get_char		; 0x0015
+
+	;; ===================================================================
+	;; OS Reset
+	;; ===================================================================
+	;; Main entry point for the kernel
+	;; -------------------------------------------------------------------
+os_reset:	
 	push cs
 	pop ds			; Align the data segment with the code segment
 
-	push 0x0050		; Put the stack near the bottom of the memory
-	pop ss
+	push 0x0050		; Put the stack in a segment near the bottom
+	pop ss			; of the memory
 	
-	mov bp, 0xFFFF		; Give us 65kb of stack space
+	mov bp, 0xFFFF		; Give us 65k of stack space
 	mov sp, bp
 
 	mov [BOOT_DRIVE], dl	; Store the boot-drive number
 
-	;; ===================================================================
-	;; Initialise OS Call Interrupt
-	;; ===================================================================
-	;; Create an interrupt (0xF0) to handle system call. System calls will
-	;; be done by calling this interrupt with bx holding the number of
-	;; the required command (see OS Call Handler below).
-	;; -------------------------------------------------------------------
-os_init_interrupt:
-	push word 0		; BIOS interrupt table is in segment 0x0000
-	pop es
-	mov [es:4 * 0xF0], word os_call ; Store the offset address of the handler
-	mov [es:4 * 0xF0 + 2], cs 	; The handler is in the current code segment
-
-	;; Initialisation complete -- jump to the actual starting-point
-	jmp start_os
-
-	;; ===================================================================
-	;; OS Call Handler & OS Call Table
-	;; ===================================================================
-	;; Calls made via the OS Call interrupt will go via this handler,
-	;; which uses the table of routine addresses (os_call_table) to route
-	;; the call to the required function.
-	;;
-	;; Put the OS Call Number into bx, then call INT 0xF0
-	;; -------------------------------------------------------------------
-os_call:
-	cmp bx, os_call_max	; Check that the call number is within range
-	jg os_invalid_call	; Report an error if it isn't
-	shl bx, 1		; Each entry in the call table is two bytes,
-				; so multiply the call number by two to get
-				; the correct offset
-	jmp near [cs:os_call_table + bx] ; Jump to the location of actual routine
-
-	os_call_max equ 1	; Highest OS Call number. Update this
-				; whenever a new entry is added to the
-				; call table
-	
-os_call_table:
-				; OS Call : Action
-				; --------:-----------------------------------
-	dw os_no_op		; 0x00	  : Null call, does nothing
-	dw os_clear_screen	; 0x01	  : Clear Screen
-
-	;; ===================================================================
-	;; OS Call Redirection functions
-	;; ===================================================================
-	;; These are the functions listed in the OS Call Table above, and in
-	;; the main they simply call the matching internal functions. This
-	;; allows the internal functions to be called from within the kernel
-	;; without having the extra setup and overhead of calling them via the
-	;; interrupt.
-	;; -------------------------------------------------------------------
-os_no_op:
-	iret
-
-os_clear_screen:
-	call clear_screen
-	iret
-	
-os_invalid_call:
-	mov si, MSG_INVALID_OS_CALL
-	call print_string
-	push dx
-	mov dx, bx
-	call print_hex
-	call print_crlf
-	pop dx
-	iret
-
-	;; ===================================================================
-	;; Clear Screen
-	;; ===================================================================
-	;; This actually sets the video mode, which has the inevitable
-	;; side-effect of resetting the screen display.
-	;; -------------------------------------------------------------------
-clear_screen:
-	push ax
-	push bx
-	mov ah, 0x00		; Set video mode
-	mov al, 0x03		; Alternatives: 0x03 (text), 0x12 or 0x13 (graphics)
-	int 0x10
-
-	mov ah, 0x0B		; Set background colour
-	xor bh, bh
-	mov bl, CL_BLUE		; Select colour
-	int 0x10
-	pop bx
-	pop ax
-	ret
-
-	;; ===================================================================
-	;; Main Entry Point
-	;; ===================================================================
-	;; Everything should be set up before jumping to this point -- see the
-	;; top of this file.
-	;; -------------------------------------------------------------------
-start_os:
-	mov bx, 0x01		; Test of the OS Call system
-	int 0xF0
-	;; call clear_screen
+	call SYS_CLEAR_SCREEN	; Set up the display and clear the screen
 	
 print_version_number:
-	mov si, version		; Fetch the address of the start of the version string
-	call print_string	; Print the version string
+	call SYS_VERSION	; Get the address of the version string
+	call SYS_PRINT_STRING	; and print the string to screen
 	call print_crlf
 
 	;; Test for pixel-plotting. Only works if a graphics mode was selected
@@ -134,7 +84,7 @@ print_version_number:
 	
 	mov dx, 0x0300		; Row 3, col 0
 	call cursor_at
-	
+
 stack_dump:
 				; Hex dump of the stack
 				; -------------------------------------------- 
@@ -142,12 +92,12 @@ stack_dump:
 	push 0xFFFF
 	push 0x01FC
 	
-	mov dx, bp		; Print stack base address
-	call print_hex
+	mov ax, bp		; Print stack base address
+	call SYS_PRINT_HEX_WORD
 	call print_space
 
-	mov dx, sp		; Print stack top address
-	call print_hex
+	mov ax, sp		; Print stack top address
+	call SYS_PRINT_HEX_WORD
 	call print_space
 
 				; Stack is at ss:sp -- copy this to es:si for
@@ -174,13 +124,13 @@ bda_dump:
 
 				; 1. COM Ports
 	
-	mov dx, 0x0000		; BDA is in segment 0x0000
-	call print_hex
+	mov ax, 0x0000		; BDA is in segment 0x0000
+	call SYS_PRINT_HEX_WORD
 	mov al, ":"
-	call print_char
+	call SYS_PRINT_CHAR
 	
-	mov dx, 0x0400		; Addresses of COM ports - 4 word values
-	call print_hex
+	mov ax, 0x0400		; Addresses of COM ports - 4 word values
+	call SYS_PRINT_HEX_WORD
 	call print_space
 
 	push 0x0000
@@ -196,13 +146,13 @@ bda_dump:
 
 				; 2. LPT Ports
 	
-	mov dx, 0x0000		; BDA is in segment 0x0000
-	call print_hex
+	mov ax, 0x0000		; BDA is in segment 0x0000
+	call SYS_PRINT_HEX_WORD
 	mov al, ":"
-	call print_char
+	call SYS_PRINT_CHAR
 	
-	mov dx, 0x0408		; Addresses of LPT ports - 3 word values
-	call print_hex
+	mov ax, 0x0408		; Addresses of LPT ports - 3 word values
+	call SYS_PRINT_HEX_WORD
 	call print_space
 
 	push 0x0000
@@ -218,16 +168,49 @@ bda_dump:
 	call print_crlf
 	
 get_input:
-	call get_char
+	call SYS_GET_CHAR
 exit:
 	jmp get_input		; Loop forever
 
+	;; ===================================================================
+	;; Clear Screen
+	;; ===================================================================
+	;; This actually sets the video mode, which has the inevitable
+	;; side-effect of resetting the screen display.
+	;; -------------------------------------------------------------------
+os_clear_screen:
+	push ax
+	push bx
+	mov ah, 0x00		; Set video mode
+	mov al, 0x03		; Alternatives: 0x03 (text), 0x12 or 0x13 (graphics)
+	int 0x10
+
+	mov ah, 0x0B		; Set background colour
+	xor bh, bh
+	mov bl, CL_BLUE		; Select colour
+	int 0x10
+	pop bx
+	pop ax
+	ret
+
+	;; ===================================================================
+	;; Version
+	;; ===================================================================
+	;; Returns the address of the version string, in es:si. Calling
+	;; SYS_PRINT_STRING immediately after calling this function will
+	;; print the version string.
+os_version:
+	push ds			; The version string is in the current data
+	pop es			; segment.
+	mov si, version		; Set SI to the offset of the string
+	ret
+	
 	;; ===================================================================
 	;; Print Character
 	;; ===================================================================
 	;; Prints the character in AL at the current cursor position
 	;; -------------------------------------------------------------------
-print_char:
+os_print_char:
 	push ax
 	push bx
 	push cx
@@ -276,7 +259,7 @@ print_char:
 	;; ===================================================================
 	;; Prints the zero-terminated string pointed to by si
 	;; -------------------------------------------------------------------
-print_string:
+os_print_string:
 	push ax
 	push si
 .next_char:
@@ -284,7 +267,7 @@ print_string:
 	lodsb			; Get the character from the string
 	or al, al		; Is it zero (end of string indicator)?
 	jz .exit		; If yes, we're done
-	call print_char
+	call SYS_PRINT_CHAR
 	jmp .next_char		; Loop back for the next character
 .exit:
 	pop si
@@ -292,25 +275,28 @@ print_string:
 	ret
 
 	;; ===================================================================
-	;; Print Hex
+	;; Print Hex Word
 	;; ===================================================================
-	;; Prints (in hex) the value held in dx
+	;; Prints (in hex) the value held in ax
 	;; -------------------------------------------------------------------
-print_hex:
+os_print_hex_word:
+	push ax
 	push dx
-	mov bl, dh              ; Print the high-byte  
-	call print_hex_byte
-	mov bl, dl		; Print the low-byte
-	call print_hex_byte
+	mov dx, ax		; Store a working copy in dx 
+	mov al, dh              ; Print the high-byte  
+	call SYS_PRINT_HEX_BYTE
+	mov al, dl		; Print the low-byte
+	call SYS_PRINT_HEX_BYTE
 	pop dx
+	pop ax
 	ret
                     
 	;; ===================================================================
 	;; Print Hex Byte
 	;; ===================================================================
-	;; Prints (in hex) the value held in bl
+	;; Prints (in hex) the value held in al
 	;; -------------------------------------------------------------------
-print_hex_byte:                                     
+os_print_hex_byte:                                     
 	push ax    
 	push bx
 	push di
@@ -320,8 +306,9 @@ print_hex_byte:
 	pop es
 	mov di, .hex_buffer + 1	; Point di to the end of the buffer
 	std			; Set the direction flag (we are decrementing)
+	mov bl, al		; Store a working copy in bl
 .next_nybble:
-	mov al, bl		; Copy the low-byte of the number
+	mov al, bl		; Retrieve the working copy of the byte
 	and al, 0x0F		; Zero the high-nybble
 	cmp al, 0x0A		; Is the result greater than 10?
 	jnc .use_alpha_chars	; Yes, use 'A' - 'F' for 10 - 15
@@ -331,11 +318,11 @@ print_hex_byte:
 	add al, 0x37		; Convert to hex (A-F) ASCII values (add 55)
 .put_char:
 	stosb			; Copy al to [es:di] and decrement di
-	shr bl, 0x04		; Next nybble fo the number we're printing
+	shr bl, 0x04		; Next nybble of the number we're printing
 	cmp di, .hex_buffer - 1	; Start of buffer?
 	jnz .next_nybble	; No -- get the next nybble
 	mov si, .hex_buffer	; Done. Print the result
-	call print_string
+	call SYS_PRINT_STRING
 	pop si
 	pop es
 	pop di
@@ -358,8 +345,7 @@ hex_dump:
 	push si
 .next_byte:
 	es lodsb
-	mov bl, al
-	call print_hex_byte
+	call SYS_PRINT_HEX_BYTE
 	call print_space
 	loop .next_byte, cx
 	pop si
@@ -371,14 +357,14 @@ hex_dump:
 print_crlf:
 	push si
 	mov si, CRLF
-	call print_string
+	call SYS_PRINT_STRING
 	pop si
 	ret
 	
 print_space:
 	push si
 	mov si, SPACE
-	call print_string
+	call SYS_PRINT_STRING
 	pop si
 	ret
 	
@@ -404,7 +390,7 @@ disk_read:
 	
 disk_error :
 	mov si, DISK_ERROR_MSG      
-	call print_string
+	call SYS_PRINT_STRING
 	jmp $
 
 	;; ===================================================================
@@ -413,10 +399,10 @@ disk_error :
 	;; Reads a single character from the keyboard into AL and echoes it
 	;; to the screen.
 	;; -------------------------------------------------------------------
-get_char:
+os_get_char:
 	xor ah, ah		; AH = 0: input a single character
 	int 0x16		; Interrupt, inputs single character into AL
-	call print_char		; Echo the returned character
+	call SYS_PRINT_CHAR	; Echo the returned character
 .exit:
 	ret
 	
@@ -551,6 +537,6 @@ CL_WHITE  	equ 	0x0F
 MSG_INVALID_OS_CALL:	db "Invalid OS call: ", 0
 
 version:
-	db 'RetrOS, v0.1.6', 0x0D, 0x0A, 'Because 640k should be enough for anybody', 0x0D, 0x0A, 0
+	db 'RetrOS, v0.2.0', 0x0D, 0x0A, 'Because 640k should be enough for anybody', 0x0D, 0x0A, 0
 	
 	times 1024-($-$$) db 0	; Pad to 1024 bytes with zero bytes
