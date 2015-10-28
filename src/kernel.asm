@@ -1,7 +1,7 @@
 ;; ============================================================================
 ;; RetrOS
 ;; ============================================================================
-;; v0.2.0
+;; v0.2.1
 ;; ----------------------------------------------------------------------------
 ;; Retros kernel
 
@@ -166,6 +166,19 @@ bda_dump:
 	call hex_dump
 	call print_crlf
 	call print_crlf
+
+disk_write_test:
+	;; As a test, write the version string to a random location on the
+	;; floppy drive
+	mov al, 1		; Write 1 sector
+	push ds			; from this data segment
+	pop es
+	mov bx, version		; Write the version string
+	mov dl, 1		; to floppy disk B (the kernel image)
+	mov dh, 0		; head 0
+	mov ch, 0		; cylinder 0
+	mov cl, 0x03		; sector 3
+	call disk_write
 	
 get_input:
 	call SYS_GET_CHAR
@@ -374,6 +387,8 @@ print_space:
 	;; Loads DH sectors to ES:BX from drive DL sector CL
 	;; -------------------------------------------------------------------
 disk_read:
+	push ax
+	push cx
 	push dx 		; Store DX on stack so later we can recall
 				; how many sectors were request to be read,
 				; even if it is altered in the meantime
@@ -382,16 +397,50 @@ disk_read:
 	mov ch, 0x00 		; Select cylinder 0
 	mov dh, 0x00 		; Select head 0
 	int 0x13 		; BIOS interrupt
-	jc disk_error		; Jump if error (i.e. carry flag set)
+	jc .disk_read_error	; Jump if error (i.e. carry flag set)
 	pop dx			; Restore DX from the stack
 	cmp dh, al		; if AL (sectors read) != DH (sectors expected)
-	jne disk_error		; display error message
-	ret
-	
-disk_error :
-	mov si, DISK_ERROR_MSG      
+	push dx			; Put dx back on the stack
+	je .exit		; All ok
+
+.disk_read_error:
+	push si
+	mov si, DISK_READ_ERROR_MSG      
 	call SYS_PRINT_STRING
-	jmp $
+	mov al, ah
+	call SYS_PRINT_HEX_BYTE
+	call print_crlf
+	pop si
+
+.exit:
+	pop dx
+	pop cx
+	pop ax
+	ret
+
+	;; ===================================================================
+	;; Disk Write
+	;; -------------------------------------------------------------------
+	;; Writes AL sectors from ES:BX to drive DL, head DH, cylinder CH, sector CL
+	;; -------------------------------------------------------------------
+disk_write:
+	push ax
+	mov ah, 0x03    	; Disk write command
+	int 13h
+	jnc .exit		; Exit if all ok (i.e. carry flag cleared)
+
+.disk_write_error:
+	push si
+	mov si, DISK_WRITE_ERROR_MSG
+	call SYS_PRINT_STRING
+	mov al, ah
+	call SYS_PRINT_HEX_BYTE
+	call print_crlf
+	pop si
+
+.exit:
+	pop ax
+	ret
 
 	;; ===================================================================
 	;; Get Char
@@ -511,7 +560,9 @@ HEX_DUMP_LABEL: db "Hex Dump", 0
 CRLF: db 0x0D, 0x0A, 0
 SPACE: db 0x20, 0
 	
-DISK_ERROR_MSG db "Disk read error!", 0
+DISK_READ_ERROR_MSG db "Disk read error!", 0
+DISK_WRITE_ERROR_MSG db "Disk write error: ", 0
+	
 
 CURSOR:	
 CURSOR_COL:	db 0
@@ -537,6 +588,6 @@ CL_WHITE  	equ 	0x0F
 MSG_INVALID_OS_CALL:	db "Invalid OS call: ", 0
 
 version:
-	db 'RetrOS, v0.2.0', 0x0D, 0x0A, 'Because 640k should be enough for anybody', 0x0D, 0x0A, 0
+	db 'RetrOS, v0.2.1', 0x0D, 0x0A, 'Because 640k should be enough for anybody', 0x0D, 0x0A, 0
 	
-	times 1024-($-$$) db 0	; Pad to 1024 bytes with zero bytes
+	times 65535-($-$$) db 0	; Pad to 65535 bytes with zero bytes
