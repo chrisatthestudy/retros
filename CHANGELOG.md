@@ -4,6 +4,7 @@ All notable changes to this project will be documented in this file.
 
 ## [0.2.1] - 2015-10-28
 - Add basic disk write facility and simple test
+- Tweaked the README
 
 ## [0.2.0] - 2015-10-27
 - Replace OS interrupt call-handling with JMP table
