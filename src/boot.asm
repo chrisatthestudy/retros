@@ -1,7 +1,7 @@
 ;; ============================================================================
 ;; RetrOS
 ;; ============================================================================
-;; v0.2.1
+;; v0.2.2
 ;; ----------------------------------------------------------------------------
 ;; A simple boot sector
 
@@ -22,8 +22,8 @@ load_kernel:
 	pop es
 	mov bx, KERNEL_OFFSET
 	mov dh, 2		; Read 2 sectors
-	mov dl, 1		; from floppy disk B
-	mov cl, 0x01 		; Start reading from first sector
+	mov dl, 0		; from floppy disk B
+	mov cl, 0x02 		; Start reading from first sector
 	call disk_read
 
 exit:

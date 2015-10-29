@@ -2,6 +2,9 @@
 
 All notable changes to this project will be documented in this file.
 
+## [0.2.2] - 2015-10-29
+- Consolidate the boot sector and kernel into a single disk image
+
 ## [0.2.1] - 2015-10-28
 - Add basic disk write facility and simple test
 - Tweaked the README

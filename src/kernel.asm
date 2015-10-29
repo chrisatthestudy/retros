@@ -1,7 +1,7 @@
 ;; ============================================================================
 ;; RetrOS
 ;; ============================================================================
-;; v0.2.1
+;; v0.2.2
 ;; ----------------------------------------------------------------------------
 ;; Retros kernel
 
@@ -174,10 +174,10 @@ disk_write_test:
 	push ds			; from this data segment
 	pop es
 	mov bx, version		; Write the version string
-	mov dl, 1		; to floppy disk B (the kernel image)
+	mov dl, 0		; to floppy disk A (the kernel image)
 	mov dh, 0		; head 0
 	mov ch, 0		; cylinder 0
-	mov cl, 0x03		; sector 3
+	mov cl, 0x04		; sector 5
 	call disk_write
 	
 get_input:
@@ -562,7 +562,6 @@ SPACE: db 0x20, 0
 	
 DISK_READ_ERROR_MSG db "Disk read error!", 0
 DISK_WRITE_ERROR_MSG db "Disk write error: ", 0
-	
 
 CURSOR:	
 CURSOR_COL:	db 0
@@ -588,6 +587,8 @@ CL_WHITE  	equ 	0x0F
 MSG_INVALID_OS_CALL:	db "Invalid OS call: ", 0
 
 version:
-	db 'RetrOS, v0.2.1', 0x0D, 0x0A, 'Because 640k should be enough for anybody', 0x0D, 0x0A, 0
+	db 'RetrOS, v0.2.2', 0x0D, 0x0A, 'Because 640k should be enough for anybody', 0x0D, 0x0A, 0
 	
-	times 65535-($-$$) db 0	; Pad to 65535 bytes with zero bytes
+freespace:	
+	times 0xFFE00-($-$$) db 0	; Pad to 1Mb with zero bytes, for the rest of the disk image
+	
