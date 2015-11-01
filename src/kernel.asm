@@ -1,7 +1,7 @@
 ;; ============================================================================
 ;; RetrOS
 ;; ============================================================================
-;; v0.2.2
+;; v0.2.3
 ;; ----------------------------------------------------------------------------
 ;; Retros kernel
 
@@ -62,8 +62,8 @@ os_reset:
 	push 0x0050		; Put the stack in a segment near the bottom
 	pop ss			; of the memory
 	
-	mov bp, 0xFFFF		; Give us 65k of stack space
-	mov sp, bp
+	mov ebp, 0xFFFF		; Give us 65k of stack space
+	mov esp, ebp
 
 	mov [BOOT_DRIVE], dl	; Store the boot-drive number
 
@@ -92,12 +92,12 @@ stack_dump:
 	push 0xFFFF
 	push 0x01FC
 	
-	mov ax, bp		; Print stack base address
-	call SYS_PRINT_HEX_WORD
+	mov eax, ebp		; Print stack base address
+	call os_print_hex_dword
 	call print_space
 
-	mov ax, sp		; Print stack top address
-	call SYS_PRINT_HEX_WORD
+	mov eax, esp		; Print stack top address
+	call os_print_hex_dword
 	call print_space
 
 				; Stack is at ss:sp -- copy this to es:si for
@@ -302,6 +302,31 @@ os_print_hex_word:
 	call SYS_PRINT_HEX_BYTE
 	pop dx
 	pop ax
+	ret
+                    
+	;; ===================================================================
+	;; Print Hex Double Word
+	;; ===================================================================
+	;; Prints (in hex) the value held in eax
+	;; -------------------------------------------------------------------
+os_print_hex_dword:
+	push eax
+	push edx
+	mov edx, eax		; Store a working copy in edx
+	push edx		; and save it on the stack
+	shr edx, 16		; Shift the high-word into the low-word
+.print_word:
+	mov al, dh              ; Print the high-byte  
+	call SYS_PRINT_HEX_BYTE
+	mov al, dl		; Print the low-byte
+	call SYS_PRINT_HEX_BYTE
+	pop edx			; Restore the original, to get the actual low-word
+	mov al, dh              ; Print the high-byte  
+	call SYS_PRINT_HEX_BYTE
+	mov al, dl		; Print the low-byte
+	call SYS_PRINT_HEX_BYTE
+	pop edx
+	pop eax
 	ret
                     
 	;; ===================================================================
@@ -550,6 +575,45 @@ plot:
 	pop ax
 	ret
 
+	
+	;; ===================================================================
+	;; Example Function
+	;; -------------------------------------------------------------------
+	;; This is a first draft, and is largely based on the standard
+	;; C calling conventions. There are things about this convention
+	;; that I don't like, but it will do as a starting point.
+	;;
+	;; This example takes three parameters (pushed onto the stack before
+	;; calling this function) and returns their sum.
+	;; 
+	;; The return value will be in EAX.
+	;; -------------------------------------------------------------------
+example_function:	
+				; Subroutine Prologue
+	push ebp     		; Save the base pointer value.
+	mov ebp, esp 		; Set the base pointer to the stack pointer.
+	sub esp, 4   		; Make room for one 4-byte local variable.
+	push edi     		; Save the values of registers that the function
+	push esi     		; will modify. This function uses EDI and ESI.
+				; (no need to save EBX, EBP, or ESP)
+
+	; Subroutine Body
+	mov eax, [ebp+8]   	; Move value of parameter 1 into EAX
+	mov esi, [ebp+12]  	; Move value of parameter 2 into ESI
+	mov edi, [ebp+16]  	; Move value of parameter 3 into EDI
+
+	mov [ebp-4], edi   	; Move EDI into the local variable
+	add [ebp-4], esi   	; Add ESI into the local variable
+	add eax, [ebp-4]   	; Add the contents of the local variable
+			   	; into EAX (final result)
+
+				; Subroutine Epilogue
+	pop esi      		; Recover register values
+	pop edi
+	mov esp, ebp 		; Deallocate local variables
+	pop ebp 		; Restore the original base pointer value
+	ret
+	
 ; Variables
 
 BOOT_DRIVE: db 0, 0
@@ -587,7 +651,7 @@ CL_WHITE  	equ 	0x0F
 MSG_INVALID_OS_CALL:	db "Invalid OS call: ", 0
 
 version:
-	db 'RetrOS, v0.2.2', 0x0D, 0x0A, 'Because 640k should be enough for anybody', 0x0D, 0x0A, 0
+	db 'RetrOS, v0.2.3', 0x0D, 0x0A, 'Because 640k should be enough for anybody', 0x0D, 0x0A, 0
 	
 freespace:	
 	times 0xFFE00-($-$$) db 0	; Pad to 1Mb with zero bytes, for the rest of the disk image

@@ -2,6 +2,10 @@
 
 All notable changes to this project will be documented in this file.
 
+## [0.2.3] - 2015-11-01
+- Add routine to hex-print a double-word
+- Add example function call
+
 ## [0.2.2] - 2015-10-29
 - Consolidate the boot sector and kernel into a single disk image
 
