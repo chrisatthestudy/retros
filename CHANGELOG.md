@@ -2,6 +2,9 @@
 
 All notable changes to this project will be documented in this file.
 
+## [0.2.4] - 2015-11-04
+- Add support for far calls into kernel
+
 ## [0.2.3] - 2015-11-01
 - Add routine to hex-print a double-word
 - Add example function call

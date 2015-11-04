@@ -1,7 +1,7 @@
 ;; ============================================================================
 ;; RetrOS
 ;; ============================================================================
-;; v0.2.3
+;; v0.2.4
 ;; ----------------------------------------------------------------------------
 ;; Retros kernel
 
@@ -16,7 +16,7 @@
 	;; 
 	;; Calling a system function:
 	;;
-	;;    call SYS_CLEAR_SCREEN
+	;;    call SYS:SYS_CLEAR_SCREEN
 	;;
 	;; This calls address 0x0006 (see the os_call_router), which then
 	;; jumps to the actual clear-screen function.
@@ -29,7 +29,7 @@
 	;; TODO: These equ declarations need to be moved to an 'include' file
 	;; so that they can be used by other programs.
 	;; -------------------------------------------------------------------
-	SYS       		equ 0x0050    ; Segment for OS call table (not currently used)
+	SYS       		equ 0x0060    ; Segment for OS call table
 	
 	SYS_RESET  		equ 0x0000    ; Restart OS
 	SYS_VERSION		equ 0x0003    ; Returns with es:si pointing to the version string
@@ -70,8 +70,14 @@ os_reset:
 	call SYS_CLEAR_SCREEN	; Set up the display and clear the screen
 	
 print_version_number:
-	call SYS_VERSION	; Get the address of the version string
-	call SYS_PRINT_STRING	; and print the string to screen
+	;; Example of calling system functions using the full segment and
+	;; offset. This is not necessary from within the kernel, but other
+	;; programs should call the functions like this, so this tests that
+	;; it works correctly.
+	
+	call SYS:SYS_VERSION
+	call SYS:SYS_PRINT_STRING
+
 	call print_crlf
 
 	;; Test for pixel-plotting. Only works if a graphics mode was selected
@@ -179,7 +185,7 @@ disk_write_test:
 	mov ch, 0		; cylinder 0
 	mov cl, 0x04		; sector 5
 	call disk_write
-	
+
 get_input:
 	call SYS_GET_CHAR
 exit:
@@ -651,7 +657,7 @@ CL_WHITE  	equ 	0x0F
 MSG_INVALID_OS_CALL:	db "Invalid OS call: ", 0
 
 version:
-	db 'RetrOS, v0.2.3', 0x0D, 0x0A, 'Because 640k should be enough for anybody', 0x0D, 0x0A, 0
+	db 'RetrOS, v0.2.4', 0x0D, 0x0A, 'Because 640k should be enough for anybody', 0x0D, 0x0A, 0
 	
 freespace:	
 	times 0xFFE00-($-$$) db 0	; Pad to 1Mb with zero bytes, for the rest of the disk image
