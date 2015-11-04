@@ -1,7 +1,7 @@
 ;; ============================================================================
 ;; RetrOS
 ;; ============================================================================
-;; v0.2.4
+;; v0.2.5
 ;; ----------------------------------------------------------------------------
 ;; Retros kernel
 
@@ -415,30 +415,28 @@ print_space:
 	;; ===================================================================
 	;; Disk Read
 	;; -------------------------------------------------------------------
-	;; Loads DH sectors to ES:BX from drive DL sector CL
+	;; Loads AL sectors to ES:BX from drive DL sector CL
 	;; -------------------------------------------------------------------
 disk_read:
 	push ax
 	push cx
-	push dx 		; Store DX on stack so later we can recall
-				; how many sectors were request to be read,
-				; even if it is altered in the meantime
-	mov ah, 0x02 		; BIOS read sector function
-	mov al, dh 		; Read DH sectors
-	mov ch, 0x00 		; Select cylinder 0
-	mov dh, 0x00 		; Select head 0
-	int 0x13 		; BIOS interrupt
+	push dx
+	mov dh, al		; Save how many sectors were requested
+	push dx
+	mov ah, 0x02		; BIOS read sector function
+	mov ch, 0x00		; Select cylinder 0
+	mov dh, 0x00		; Select head 0
+	int 0x13		; BIOS interrupt
 	jc .disk_read_error	; Jump if error (i.e. carry flag set)
-	pop dx			; Restore DX from the stack
-	cmp dh, al		; if AL (sectors read) != DH (sectors expected)
-	push dx			; Put dx back on the stack
+	pop dx		        ; Restore DX from the stack
+	cmp dh, al		; if AL (sectors read) == DH (sectors expected)
 	je .exit		; All ok
 
 .disk_read_error:
 	push si
 	mov si, DISK_READ_ERROR_MSG      
 	call SYS_PRINT_STRING
-	mov al, ah
+	mov al, ah		; ah holds the error 
 	call SYS_PRINT_HEX_BYTE
 	call print_crlf
 	pop si
@@ -657,7 +655,7 @@ CL_WHITE  	equ 	0x0F
 MSG_INVALID_OS_CALL:	db "Invalid OS call: ", 0
 
 version:
-	db 'RetrOS, v0.2.4', 0x0D, 0x0A, 'Because 640k should be enough for anybody', 0x0D, 0x0A, 0
+	db 'RetrOS, v0.2.5', 0x0D, 0x0A, 'Because 640k should be enough for anybody', 0x0D, 0x0A, 0
 	
 freespace:	
 	times 0xFFE00-($-$$) db 0	; Pad to 1Mb with zero bytes, for the rest of the disk image

@@ -2,6 +2,9 @@
 
 All notable changes to this project will be documented in this file.
 
+## [0.2.5] - 2015-11-04
+- Refactor the disk_read functions
+
 ## [0.2.4] - 2015-11-04
 - Add support for far calls into kernel
 
