@@ -1,4 +1,7 @@
-nasm ../src/boot.asm -f bin -o ../build/retros.img
+if [ ! -d ../build ]; then
+    mkdir ../build
+fi
+nasm ../src/boot.asm -f bin -o ../build/boot.img
 nasm ../src/kernel.asm -f bin -o ../build/kernel.img
-read -p "Press any key to continue... " -n1 -s
+cat ../build/boot.img ../build/kernel.img > ../build/retros.img
 

@@ -1,1 +1,1 @@
-qemu -fda ../build/retros.img -fdb ../build/kernel.img
+qemu-system-x86_64 -fda ../build/retros.img

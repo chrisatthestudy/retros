@@ -2,6 +2,9 @@
 
 All notable changes to this project will be documented in this file.
 
+## [0.2.6] - 2015-11-08
+- Fix *nix versions of scripts
+
 ## [0.2.5] - 2015-11-04
 - Refactor the disk_read functions
 
